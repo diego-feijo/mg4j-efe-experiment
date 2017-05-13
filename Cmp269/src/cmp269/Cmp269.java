@@ -156,7 +156,8 @@ public class Cmp269 {
             DocumentBuilder builder = dbFactory.newDocumentBuilder();
             Document doc = builder.parse(is);
             
-
+            // Termos que irao compor a consulta a partir das descricoes
+            // textuais do arquivo de consulta
             TreeSet<QueryTerm> queryTerms = new TreeSet();
             NodeList consultas = doc.getElementsByTagName("top");
             // Para cada consulta (elemento <top>)
@@ -189,14 +190,16 @@ public class Cmp269 {
                     for (String t : q.split("\\s+")) {
                         MutableString m = new MutableString(t);
                         if (stemmer.processTerm(m)) {
-                            // Mas apenas adiciona os termos que nao forem stopwords
+                            // Mas apenas adiciona os termos que ainda nao foram
+                            // adicionados, que nao forem stopwords
                             // e que tenham tamanho maior que 1 e que consigam
                             // recuperar algum resultado
-                            if (m.length() > 1) {
+                            QueryTerm queryTerm = new QueryTerm(m.toString());
+                            if (m.length() > 1 && !queryTerms.contains(queryTerm.getTerm())) {
                                 try {
                                     queryEngine.process(m.toString(), 0, 100, results);
                                     if (results.size() > 0) {
-                                        QueryTerm queryTerm = new QueryTerm(m.toString(), results.size());
+                                        queryTerm.setDocumentFrequency(results.size());
                                         queryTerms.add(queryTerm);
                                     }
                                 } catch(QueryBuilderVisitorException | QueryParserException | IOException e) {
