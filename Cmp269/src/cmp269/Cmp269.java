@@ -2,12 +2,15 @@ package cmp269;
 
 import it.unimi.di.mg4j.document.AbstractDocumentSequence;
 import it.unimi.di.mg4j.document.DocumentCollection;
-import it.unimi.di.mg4j.document.TRECDocumentCollection;
+import it.unimi.di.mg4j.document.DocumentFactory;
 import it.unimi.di.mg4j.index.Index;
 import it.unimi.di.mg4j.index.TermProcessor;
+import it.unimi.di.mg4j.query.IntervalSelector;
+import it.unimi.di.mg4j.query.MarkingMutableString;
 import static it.unimi.di.mg4j.query.Query.MAX_STEMMING;
 import it.unimi.di.mg4j.query.QueryEngine;
 import it.unimi.di.mg4j.query.SelectedInterval;
+import it.unimi.di.mg4j.query.TextMarker;
 import it.unimi.di.mg4j.query.nodes.QueryBuilderVisitorException;
 import it.unimi.di.mg4j.query.parser.QueryParserException;
 import it.unimi.di.mg4j.query.parser.SimpleParser;
@@ -16,7 +19,6 @@ import it.unimi.di.mg4j.search.score.BM25Scorer;
 import it.unimi.di.mg4j.search.score.DocumentScoreInfo;
 import it.unimi.di.mg4j.search.score.Scorer;
 import it.unimi.di.mg4j.search.score.VignaScorer;
-import it.unimi.di.mg4j.tool.IndexBuilder;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceLinkedOpenHashMap;
@@ -29,22 +31,20 @@ import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import it.unimi.dsi.lang.MutableString;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
-import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -58,8 +58,6 @@ import org.xml.sax.InputSource;
 /**
  * Adaptado de it.unimi.di.mg4j.query.Query:
  * 
- * Criar o indice, executa as pesquisas e escreve o resultado em arquivo de texto.
- * Pressupoe que a coleção para indexação está em /tmp/efe/*.sgml
  * Escreve arquivo de saida em /tmp/output.txt
  * 
  * As consultas tem o formato: 
@@ -80,55 +78,26 @@ import org.xml.sax.InputSource;
  */
 public class Cmp269 {
 
-    private static final String ENCODING = "ISO-8859-1";
-    private static final String STEMMER = "cmp269.SpanishStopwordStemmer";
+    public static final String ENCODING = "ISO-8859-1";
+    public static final String COLLECTION = "/tmp/efe.collection";
+    
+    private static final String QUERYFILE = "/tmp/Consultas.txt";
     private static final String FILENAME = "/tmp/output.txt";
-    private static final String COLLECTION = "/tmp/efe.collection";
+    private static final String QUERYS = "/tmp/querys.txt";
     
     /** 
      * @param args the command line arguments
      */
     public static void main(String[] args) {
         FileWriter fw = null;
+        FileWriter fwq = null;
         BufferedWriter bw = null;
+        BufferedWriter bwq = null;
         try {
             fw = new FileWriter(FILENAME);
+            fwq = new FileWriter(QUERYS);
             bw = new BufferedWriter(fw);
-
-            // Parte inicial referente a indexação
-            // Busca a lista de arquivos a serem indexados
-            String[] files = new File("/tmp/efe/").list(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    return name.endsWith(".sgml");
-                }
-            });
-            
-            List<String> trecParams = new ArrayList();
-            trecParams.add("-p");
-            trecParams.add("encoding="+ENCODING);
-            trecParams.add(COLLECTION);
-            trecParams.add("-f");
-            trecParams.add("HtmlDocumentFactory");
-            for (String file : files) {
-                trecParams.add("/tmp/efe/" + file);
-            }
-            String[] tParams = new String[trecParams.size()];
-            tParams = trecParams.toArray(tParams);
-            // Descomentar para indexar
-//            EfeDocumentCollection.main(tParams);
-//            TRECDocumentCollection.main(tParams);
-            String[] params = new String[] {
-                "-S", COLLECTION, "-p", "encoding="+ENCODING, "-t", STEMMER,
-                "-f", "HtmlDocumentFactory", "efe"
-            };
-            
-            // Descomentar para indexar
-//            IndexBuilder indexBuilder = new IndexBuilder("efe", documentCollection);
-//            indexBuilder.indexedFields(0,1,2,3,4,5,6,7,8,9,10,11,12);
-//            indexBuilder.run();
-//            IndexBuilder.main(params);
-            // Fim da parte inicial referente a indexacao
+            bwq = new BufferedWriter(fwq);
 
             // Busca e configura os parametros do indice
             // Defina campos, processadores de termos, encoding, tudo buscando os
@@ -136,7 +105,7 @@ public class Cmp269 {
             final DocumentCollection documentCollection = (DocumentCollection) AbstractDocumentSequence.load(COLLECTION);
             final Object2ReferenceLinkedOpenHashMap<String,Index> indexMap = new Object2ReferenceLinkedOpenHashMap<>( Hash.DEFAULT_INITIAL_SIZE, .5f );
             final Reference2DoubleOpenHashMap<Index> index2Weight = new Reference2DoubleOpenHashMap<>();
-            final String[] basenameWeight = new String[] { "efe-text" };
+            final String[] basenameWeight = new String[] { "efe-title", "efe-text" };
             final boolean loadSizes = true;
             loadIndicesFromSpec( basenameWeight, loadSizes, documentCollection, indexMap, index2Weight );
             final Object2ObjectOpenHashMap<String,TermProcessor> termProcessors = new Object2ObjectOpenHashMap<>( indexMap.size() );
@@ -148,8 +117,10 @@ public class Cmp269 {
             final QueryEngine queryEngine = new QueryEngine( simpleParser, new DocumentIteratorBuilderVisitor( indexMap, index2Parser, indexMap.get( indexMap.firstKey() ), MAX_STEMMING ), indexMap );
             queryEngine.setWeights( index2Weight );
             queryEngine.score( new Scorer[] { new BM25Scorer(), new VignaScorer() }, new double[] { 1, 1 } );
+            queryEngine.intervalSelector = documentCollection != null ? new IntervalSelector( 4, 40 ) : new IntervalSelector();
             queryEngine.equalize( 1000 );
             queryEngine.multiplex = true;
+
             final ObjectArrayList<DocumentScoreInfo<Reference2ObjectMap<Index,SelectedInterval[]>>> results = new ObjectArrayList<DocumentScoreInfo<Reference2ObjectMap<Index,SelectedInterval[]>>>();
 
             // Classe especial com Stemming e stopwords, pode ser substituida
@@ -158,7 +129,6 @@ public class Cmp269 {
 
             // Processar as consultas
             // ler as consultas
-            final String QUERYFILE = "/tmp/Consultas.txt";
             InputStream inputStream = new FileInputStream(QUERYFILE);
             Reader reader = new InputStreamReader(inputStream, ENCODING);
             InputSource is = new InputSource(reader);
@@ -200,6 +170,7 @@ public class Cmp269 {
                     // A consulta agora é uma longa sequencia de termos contendo
                     // stopwords e sem stemming
                     q = q.trim();
+                    String original = q;
                     
                     // Processar termo por termo
                     for (String t : q.split("\\s+")) {
@@ -239,15 +210,36 @@ public class Cmp269 {
                         }
                         if (results.isEmpty()) {
                             Logger.getLogger(Cmp269.class.getName()).log(Level.SEVERE, "Nenhum termo da pesquisa pode ser usado: {0}", num);
+                            bwq.write(String.format("[%d] O=[%s] Nenhum termo da pesquisa pode ser usado", num, original));
                         } else {
                             // Finalmente, encontramos resultados usando o maior numero possivel de termos
-                            System.out.println(String.format("Consulta: [%d] Query Usada: [%s] Resultados: [%d]", num, q, results.size()));
+                            bwq.write(String.format("[%d] Q=[%s] O=[%s]\n", num, q, original));
                             DocumentScoreInfo<Reference2ObjectMap<Index,SelectedInterval[]>> dsi;
                             for(int j = 0; j < results.size(); j++) {
                                 dsi = results.get(j);
-                                it.unimi.di.mg4j.document.Document d = documentCollection.document(dsi.document);
+                                EfeDocument d = (EfeDocument) documentCollection.document(dsi.document);
+                                // TODO: this must be in increasing field order
+                                final Index[] sortedIndex = dsi.info.keySet().toArray( new Index[ 0 ] );
+                                Arrays.sort( sortedIndex, new Comparator<Index>() {
+                                        public int compare( final Index i0, final Index i1 ) {
+                                                return documentCollection.factory().fieldIndex( i0.field ) - documentCollection.factory().fieldIndex( i1.field );
+                                        }} );
+                                bwq.write(String.format("%2d %s\n", j, d.getDocno()));
+                                for( Index index: sortedIndex ) {
+                                    if ( index.hasPositions ) {
+                                        SelectedInterval[] interval = dsi.info.get( index );
+                                        final MarkingMutableString s = new MarkingMutableString( TextMarker.TEXT_STANDOUT );
+                                        s.startField( interval );
+                                        int fieldIndex = documentCollection.factory().fieldIndex( index.field );
+                                        if ( fieldIndex == -1 || documentCollection.factory().fieldType( fieldIndex ) != DocumentFactory.FieldType.TEXT ) continue;
+                                        final Reader outReader = (Reader)d.content( fieldIndex );
+                                        s.appendAndMark( d.wordReader( fieldIndex ).setReader( outReader ) );
+                                        s.endField();
+                                        bwq.write(String.format("%s: %s\n", index.field, s.toString()));
+                                    }
+                                }
                                 // Escreve no arquivo de saida os dados da consulta
-                                bw.write(String.format(Locale.US, "%d Q0 %s %d %f %s\n", num, d.title().toString().trim(), j, dsi.score, "diego"));
+                                bw.write(String.format(Locale.US, "%d Q0 %s %d %f %s\n", num, d.getDocno(), j, dsi.score, "diego"));
                                 d.close();
                             }
                         }
@@ -260,18 +252,12 @@ public class Cmp269 {
             Logger.getLogger(Cmp269.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             try { if (bw != null) bw.close(); } catch(Exception e) {};
+            try { if (bwq != null) bwq.close(); } catch(Exception e) {};
             try { if (fw != null) fw.close(); } catch(Exception e) {};
+            try { if (fwq != null) fwq.close(); } catch(Exception e) {};
         }
     }
     
-    /*private static String format(TreeSet<QueryTerm> queryTerms) {
-        StringBuilder s = new StringBuilder();
-        for (QueryTerm queryTerm : queryTerms) {
-            s.append(queryTerm.getTerm()).append(" ");
-        }
-        return s.toString().trim();
-    }*/
-
     private static String format(List<QueryTerm> queryTerms) {
         StringBuilder s = new StringBuilder();
         for (QueryTerm queryTerm : queryTerms) {
@@ -309,7 +295,12 @@ public class Cmp269 {
 
             if (split == -1 || basenameWeight[i].startsWith("mg4j://")) {
                 index = Index.getInstance(basenameWeight[i], true, loadSizes);
-                index2Weight.put(index, 1);
+                if (i == 0) {
+                    index2Weight.put(index, 3);
+                } else {
+                    index2Weight.put(index, 1);
+                }
+                
             } else {
                 index = Index.getInstance(basenameWeight[i].substring(0, split));
                 index2Weight.put(index, weight);

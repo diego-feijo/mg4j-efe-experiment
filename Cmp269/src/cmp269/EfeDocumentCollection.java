@@ -59,13 +59,10 @@ import com.martiansoftware.jsap.Switch;
 import com.martiansoftware.jsap.UnflaggedOption;
 import it.unimi.di.mg4j.document.AbstractDocumentCollection;
 import it.unimi.di.mg4j.document.AbstractDocumentIterator;
-import it.unimi.di.mg4j.document.CompositeDocumentFactory;
 import it.unimi.di.mg4j.document.Document;
 import it.unimi.di.mg4j.document.DocumentFactory;
 import it.unimi.di.mg4j.document.DocumentIterator;
-import it.unimi.di.mg4j.document.IdentityDocumentFactory;
 import it.unimi.di.mg4j.document.PropertyBasedDocumentFactory;
-import it.unimi.di.mg4j.document.TRECHeaderDocumentFactory;
 
 /**
  * A collection for the TREC GOV2 data set.
@@ -229,8 +226,8 @@ public class EfeDocumentCollection extends AbstractDocumentCollection implements
                     currStart = oldPos;
                     startedBlock = true; // Start of the current block (includes <DOC> marker)
                 } else if (startedBlock && equals(buffer, l, DOC_CLOSE)) {
-//                    currStop = oldPos;
-                    currStop = oldPos + DOC_CLOSE.length;
+                    currStop = oldPos;
+//                    currStop = oldPos + DOC_CLOSE.length;
 //                    currStop = fbis.position();
                     if (DEBUG) {
                         LOGGER.debug("Setting markers <" + currStart + "," + currStop + ">");
@@ -423,6 +420,7 @@ public class EfeDocumentCollection extends AbstractDocumentCollection implements
                 return true;
             }
 
+            @Override
             public Document nextDocument() throws IOException {
                 /* If necessary, skip to the next segment, else, try skipping to the next gzip file. */
                 if (DEBUG) {
@@ -517,11 +515,11 @@ public class EfeDocumentCollection extends AbstractDocumentCollection implements
             Arrays.sort(file);
         }
 
-        final DocumentFactory composite = CompositeDocumentFactory.getFactory(new TRECHeaderDocumentFactory(), userFactory);
+//        final DocumentFactory composite = CompositeDocumentFactory.getFactory(new TRECHeaderDocumentFactory(), userFactory);
 
         if (file.length == 0) {
             System.err.println("WARNING: empty file set.");
         }
-        BinIO.storeObject(new EfeDocumentCollection(file, composite, jsapResult.getInt("bufferSize"), jsapResult.getBoolean("gzipped")), jsapResult.getString("collection"));
+        BinIO.storeObject(new EfeDocumentCollection(file, userFactory, jsapResult.getInt("bufferSize"), jsapResult.getBoolean("gzipped")), jsapResult.getString("collection"));
     }
 }

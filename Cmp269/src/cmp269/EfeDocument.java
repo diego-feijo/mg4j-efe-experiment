@@ -14,27 +14,14 @@ import it.unimi.dsi.io.WordReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  *
  * @author diego
  */
-@XmlRootElement(name="DOC")
 public class EfeDocument extends AbstractDocument {
     
     private String docno = "";
-    private String docid = "";
-    private String date = "";
-    private String time = "";
-    private String scate = "";
-    private String ficheros = "";
-    private String destino = "";
-    private String category = "";
-    private String clave = "";
-    private String num = "";
-    private String prioridad = "";
     private String title = "";
     private String text = "";
     
@@ -66,13 +53,12 @@ public class EfeDocument extends AbstractDocument {
 
     @Override
     public String toString() {
-        return title;
+        return docno;
     }
 
     @Override
     public CharSequence uri() {
         return (CharSequence) metadata.get(PropertyBasedDocumentFactory.MetadataKeys.URI);
-//        return "[no uri]";
     }
 
     @Override
@@ -81,28 +67,8 @@ public class EfeDocument extends AbstractDocument {
             case 0:
                 return new StringReader(docno);
             case 1:
-                return new StringReader(docid);
-            case 2:
-                return new StringReader(date);
-            case 3:
-                return new StringReader(time);
-            case 4:
-                return new StringReader(scate);
-            case 5:
-                return new StringReader(ficheros);
-            case 6:
-                return new StringReader(destino);
-            case 7:
-                return new StringReader(category);
-            case 8:
-                return new StringReader(clave);
-            case 9:
-                return new StringReader(num);
-            case 10:
-                return new StringReader(prioridad);
-            case 11:
                 return new StringReader(title);
-            case 12:
+            case 2:
                 return new StringReader(text);
             default:
                 throw new IOException("Campo invalido");
@@ -120,106 +86,14 @@ public class EfeDocument extends AbstractDocument {
         return docno;
     }
 
-    @XmlElement(name="DOCNO")
     public void setDocno(String docno) {
         this.docno = docno.trim();
-    }
-
-    public String getDocid() {
-        return docid;
-    }
-
-    @XmlElement(name="DOCID")
-    public void setDocid(String docid) {
-        this.docid = docid.trim();
-    }
-
-    public String getDate() {
-        return date;
-    }
-
-    @XmlElement(name="DATE")
-    public void setDate(String date) {
-        this.date = date.trim();
-    }
-
-    public String getTime() {
-        return time;
-    }
-
-    @XmlElement(name="TIME")
-    public void setTime(String time) {
-        this.time = time.trim();
-    }
-
-    public String getScate() {
-        return scate;
-    }
-
-    @XmlElement(name="SCATE")
-    public void setScate(String scate) {
-        this.scate = scate.trim();
-    }
-
-    public String getFicheros() {
-        return ficheros;
-    }
-
-    @XmlElement(name="FICHEROS")
-    public void setFicheros(String ficheros) {
-        this.ficheros = ficheros.trim();
-    }
-
-    public String getDestino() {
-        return destino;
-    }
-
-    @XmlElement(name="DESTINO")
-    public void setDestino(String destino) {
-        this.destino = destino.trim();
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    @XmlElement(name="CATEGORY")
-    public void setCategory(String category) {
-        this.category = category.trim();
-    }
-
-    public String getClave() {
-        return clave;
-    }
-
-    @XmlElement(name="CLAVE")
-    public void setClave(String clave) {
-        this.clave = clave.trim();
-    }
-
-    public String getNum() {
-        return num;
-    }
-
-    @XmlElement(name="NUM")
-    public void setNum(String num) {
-        this.num = num.trim();
-    }
-
-    public String getPrioridad() {
-        return prioridad;
-    }
-
-    @XmlElement(name="PRIORIDAD")
-    public void setPrioridad(String prioridad) {
-        this.prioridad = prioridad.trim();
     }
 
     public String getTitle() {
         return title;
     }
 
-    @XmlElement(name="TITLE")
     public void setTitle(String title) {
         this.title = title.trim();
     }
@@ -228,7 +102,6 @@ public class EfeDocument extends AbstractDocument {
         return text;
     }
 
-    @XmlElement(name="TEXT")
     public void setText(String text) {
         this.text = text.trim();
     }
