@@ -17,8 +17,9 @@ public class QueryTerm implements Comparable<QueryTerm> {
     
     private Integer documentFrequency;
 
-    public QueryTerm(String term) {
+    public QueryTerm(String term, int documentFrequency) {
         this.term = term;
+        this.documentFrequency = documentFrequency;
     }
 
     public String getTerm() {

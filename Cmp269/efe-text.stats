@@ -1,0 +1,31 @@
+Pointers
+=========
+Upper bits: 70656820 (8.83MB, 34.28%)
+Lower bits: 132602037 (16.58MB, 64.33%)
+Skip pointers bits: 2340048 (292.51KB, 1.14%)
+Additional bits: 527100 (65.89KB, 0.26%)
+Overall bits: 206126005 (25.77MB)
+
+Bits per pointer: 7.04 (7.13 with skips)
+
+Counts
+=========
+Upper bits: 40374864 (5.05MB, 96.26%)
+Lower bits: 121747 (15.22KB, 0.29%)
+Skip pointers bits: 1447676 (180.96KB, 3.45%)
+Additional bits: 0 (0B, 0.00%)
+Overall bits: 41944287 (5.24MB)
+
+Bits per count: 1.40 (1.45 with skips)
+
+Positions
+=========
+Upper bits: 97754321 (12.22MB, 25.88%)
+Lower bits: 275222510 (34.40MB, 72.87%)
+Skip pointers bits: 2274713 (284.34KB, 0.60%)
+Additional bits: 2443274 (305.41KB, 0.65%)
+Overall bits: 377694818 (47.21MB)
+
+Bits per position: 9.26 (9.32 with skips)
+
+Size: 625765110 bits (78.22MB)

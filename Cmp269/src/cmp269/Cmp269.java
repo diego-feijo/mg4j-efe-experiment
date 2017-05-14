@@ -2,6 +2,7 @@ package cmp269;
 
 import it.unimi.di.mg4j.document.AbstractDocumentSequence;
 import it.unimi.di.mg4j.document.DocumentCollection;
+import it.unimi.di.mg4j.document.TRECDocumentCollection;
 import it.unimi.di.mg4j.index.Index;
 import it.unimi.di.mg4j.index.TermProcessor;
 import static it.unimi.di.mg4j.query.Query.MAX_STEMMING;
@@ -15,6 +16,7 @@ import it.unimi.di.mg4j.search.score.BM25Scorer;
 import it.unimi.di.mg4j.search.score.DocumentScoreInfo;
 import it.unimi.di.mg4j.search.score.Scorer;
 import it.unimi.di.mg4j.search.score.VignaScorer;
+import it.unimi.di.mg4j.tool.IndexBuilder;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceLinkedOpenHashMap;
@@ -37,7 +39,9 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TreeSet;
@@ -79,6 +83,7 @@ public class Cmp269 {
     private static final String ENCODING = "ISO-8859-1";
     private static final String STEMMER = "cmp269.SpanishStopwordStemmer";
     private static final String FILENAME = "/tmp/output.txt";
+    private static final String COLLECTION = "/tmp/efe.collection";
     
     /** 
      * @param args the command line arguments
@@ -102,26 +107,33 @@ public class Cmp269 {
             List<String> trecParams = new ArrayList();
             trecParams.add("-p");
             trecParams.add("encoding="+ENCODING);
-            trecParams.add("/tmp/efe.collection");
+            trecParams.add(COLLECTION);
+            trecParams.add("-f");
+            trecParams.add("HtmlDocumentFactory");
             for (String file : files) {
                 trecParams.add("/tmp/efe/" + file);
             }
             String[] tParams = new String[trecParams.size()];
             tParams = trecParams.toArray(tParams);
             // Descomentar para indexar
+//            EfeDocumentCollection.main(tParams);
 //            TRECDocumentCollection.main(tParams);
             String[] params = new String[] {
-                "-S", "/tmp/efe.collection", "-p", "encoding="+ENCODING, "-t", STEMMER, "efe"
+                "-S", COLLECTION, "-p", "encoding="+ENCODING, "-t", STEMMER,
+                "-f", "HtmlDocumentFactory", "efe"
             };
             
             // Descomentar para indexar
+//            IndexBuilder indexBuilder = new IndexBuilder("efe", documentCollection);
+//            indexBuilder.indexedFields(0,1,2,3,4,5,6,7,8,9,10,11,12);
+//            indexBuilder.run();
 //            IndexBuilder.main(params);
             // Fim da parte inicial referente a indexacao
 
             // Busca e configura os parametros do indice
             // Defina campos, processadores de termos, encoding, tudo buscando os
             // metadados do indice já gerado
-            final DocumentCollection documentCollection = (DocumentCollection) AbstractDocumentSequence.load( "/tmp/efe.collection" );
+            final DocumentCollection documentCollection = (DocumentCollection) AbstractDocumentSequence.load(COLLECTION);
             final Object2ReferenceLinkedOpenHashMap<String,Index> indexMap = new Object2ReferenceLinkedOpenHashMap<>( Hash.DEFAULT_INITIAL_SIZE, .5f );
             final Reference2DoubleOpenHashMap<Index> index2Weight = new Reference2DoubleOpenHashMap<>();
             final String[] basenameWeight = new String[] { "efe-text" };
@@ -137,6 +149,7 @@ public class Cmp269 {
             queryEngine.setWeights( index2Weight );
             queryEngine.score( new Scorer[] { new BM25Scorer(), new VignaScorer() }, new double[] { 1, 1 } );
             queryEngine.equalize( 1000 );
+            queryEngine.multiplex = true;
             final ObjectArrayList<DocumentScoreInfo<Reference2ObjectMap<Index,SelectedInterval[]>>> results = new ObjectArrayList<DocumentScoreInfo<Reference2ObjectMap<Index,SelectedInterval[]>>>();
 
             // Classe especial com Stemming e stopwords, pode ser substituida
@@ -156,12 +169,12 @@ public class Cmp269 {
             DocumentBuilder builder = dbFactory.newDocumentBuilder();
             Document doc = builder.parse(is);
             
-            // Termos que irao compor a consulta a partir das descricoes
-            // textuais do arquivo de consulta
-            TreeSet<QueryTerm> queryTerms = new TreeSet();
             NodeList consultas = doc.getElementsByTagName("top");
             // Para cada consulta (elemento <top>)
             for (int i = 0; i < consultas.getLength(); i++) {
+                // Termos que irao compor a consulta a partir das descricoes
+                // textuais do arquivo de consulta
+                List<QueryTerm> queryTerms = new ArrayList();
                 Node node = consultas.item(i);
                 if (node.getNodeType() == Node.ELEMENT_NODE) {
                     NodeList fields = node.getChildNodes();
@@ -174,12 +187,14 @@ public class Cmp269 {
                         if (child.getNodeName().equalsIgnoreCase("num")) {
                             // Encontrou o numero
                             num = Integer.parseInt(child.getTextContent().trim());
-                        } else if (child.getNodeName().equalsIgnoreCase("ES-title") ||
-                                child.getNodeName().equalsIgnoreCase("ES-desc")) {
+                        } else if (child.getNodeName().equalsIgnoreCase("ES-title")/* ||
+                                child.getNodeName().equalsIgnoreCase("ES-desc")/* ||
+                                child.getNodeName().equalsIgnoreCase("ES-narr")*/) {
                             // Encontrou o titulo ou descricao, adiciona para consulta
-                            String t = child.getTextContent().replaceAll("[^\\w\\s]"," ");
+//                            q += child.getTextContent();
+                            q += child.getTextContent().replaceAll("[^\\p{L}\\p{Nd}]+"," ") + " ";
                             // Remove caracteres especias como $%&#@|
-                            q += t.replaceAll("\\s+", " ").trim() + " ";
+//                            q += t.replaceAll("\\s+", " ").trim() + " ";
                         }
                     }
                     // A consulta agora é uma longa sequencia de termos contendo
@@ -194,10 +209,10 @@ public class Cmp269 {
                             // adicionados, que nao forem stopwords
                             // e que tenham tamanho maior que 1 e que consigam
                             // recuperar algum resultado
-                            QueryTerm queryTerm = new QueryTerm(m.toString());
-                            if (m.length() > 1 && !queryTerms.contains(queryTerm.getTerm())) {
+                            QueryTerm queryTerm = new QueryTerm(m.toString(),0);
+                            if (m.length() > 1) {
                                 try {
-                                    queryEngine.process(m.toString(), 0, 100, results);
+                                    queryEngine.process(m.toString(), 0, 10000, results);
                                     if (results.size() > 0) {
                                         queryTerm.setDocumentFrequency(results.size());
                                         queryTerms.add(queryTerm);
@@ -207,17 +222,19 @@ public class Cmp269 {
                             }
                         }
                     }
+                    results.clear();
                     
                     // Nesse ponto, queryTerms tem os termos na ordem para ser processados
                     // Vamos tentar processar todos os termos da query
                     // Em caso de não encontrar documentos, usamos a lista prioritária
                     // para descartar termos menos relevantes
-                    q = format(queryTerms);
+                    Collections.sort(queryTerms);
                     try {
                         while (results.isEmpty() && !queryTerms.isEmpty()) {
+                            q = format(queryTerms);
                             queryEngine.process(q, 0, 100, results);
                             // Termo que aparece em mais documentos (menos importante primeiro)
-                            QueryTerm last = queryTerms.last();
+                            QueryTerm last = queryTerms.get(queryTerms.size()-1);
                             queryTerms.remove(last);
                         }
                         if (results.isEmpty()) {
@@ -247,7 +264,15 @@ public class Cmp269 {
         }
     }
     
-    private static String format(TreeSet<QueryTerm> queryTerms) {
+    /*private static String format(TreeSet<QueryTerm> queryTerms) {
+        StringBuilder s = new StringBuilder();
+        for (QueryTerm queryTerm : queryTerms) {
+            s.append(queryTerm.getTerm()).append(" ");
+        }
+        return s.toString().trim();
+    }*/
+
+    private static String format(List<QueryTerm> queryTerms) {
         StringBuilder s = new StringBuilder();
         for (QueryTerm queryTerm : queryTerms) {
             s.append(queryTerm.getTerm()).append(" ");

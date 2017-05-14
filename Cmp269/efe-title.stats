@@ -1,0 +1,31 @@
+Pointers
+=========
+Upper bits: 0 (0B, �%)
+Lower bits: 0 (0B, �%)
+Skip pointers bits: 0 (0B, �%)
+Additional bits: 0 (0B, �%)
+Overall bits: 0 (0B)
+
+Bits per pointer: � (� with skips)
+
+Counts
+=========
+Upper bits: 0 (0B, �%)
+Lower bits: 0 (0B, �%)
+Skip pointers bits: 0 (0B, �%)
+Additional bits: 0 (0B, �%)
+Overall bits: 0 (0B)
+
+Bits per count: � (� with skips)
+
+Positions
+=========
+Upper bits: 0 (0B, �%)
+Lower bits: 0 (0B, �%)
+Skip pointers bits: 0 (0B, �%)
+Additional bits: 0 (0B, �%)
+Overall bits: 0 (0B)
+
+Bits per position: � (� with skips)
+
+Size: 0 bits (0B)
