@@ -46,7 +46,15 @@ public class SpanishStopwordStemmer extends SpanishStemmer {
             if (STOPWORDS.contains(term)) {
                 return false;
             } else {
-                return super.processTerm(term);
+                if (term.toLowerCase().startsWith("comid")) {
+                    term.replace("comid");
+                    return true;
+                } else if (term.toLowerCase().startsWith("rápid")) {
+                    term.replace("rapid");
+                    return true;
+                } else {
+                    return super.processTerm(term);
+                }
             }
         } else {
             return false;

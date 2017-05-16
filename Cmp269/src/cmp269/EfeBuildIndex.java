@@ -22,7 +22,8 @@ import java.util.logging.Logger;
  */
 public class EfeBuildIndex {
 
-    private static final String STEMMER = "cmp269.SpanishStopwordStemmer";
+    private static final String STEMMER = "DowncaseTermProcessor";
+//    private static final String STEMMER = "cmp269.SpanishStopwordStemmer";
     
     public static void main(String[] args) {
         try {

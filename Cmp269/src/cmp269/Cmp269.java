@@ -1,8 +1,10 @@
 package cmp269;
 
+import com.google.common.collect.Sets;
 import it.unimi.di.mg4j.document.AbstractDocumentSequence;
 import it.unimi.di.mg4j.document.DocumentCollection;
 import it.unimi.di.mg4j.document.DocumentFactory;
+import it.unimi.di.mg4j.index.DowncaseTermProcessor;
 import it.unimi.di.mg4j.index.Index;
 import it.unimi.di.mg4j.index.TermProcessor;
 import it.unimi.di.mg4j.query.IntervalSelector;
@@ -43,8 +45,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -105,7 +109,7 @@ public class Cmp269 {
             final DocumentCollection documentCollection = (DocumentCollection) AbstractDocumentSequence.load(COLLECTION);
             final Object2ReferenceLinkedOpenHashMap<String,Index> indexMap = new Object2ReferenceLinkedOpenHashMap<>( Hash.DEFAULT_INITIAL_SIZE, .5f );
             final Reference2DoubleOpenHashMap<Index> index2Weight = new Reference2DoubleOpenHashMap<>();
-            final String[] basenameWeight = new String[] { "efe-title", "efe-text" };
+            final String[] basenameWeight = new String[] { "/tmp/efe-title", "/tmp/efe-text" };
             final boolean loadSizes = true;
             loadIndicesFromSpec( basenameWeight, loadSizes, documentCollection, indexMap, index2Weight );
             final Object2ObjectOpenHashMap<String,TermProcessor> termProcessors = new Object2ObjectOpenHashMap<>( indexMap.size() );
@@ -125,7 +129,8 @@ public class Cmp269 {
 
             // Classe especial com Stemming e stopwords, pode ser substituida
             // pela SpanishStemmer
-            SpanishStopwordStemmer stemmer = new SpanishStopwordStemmer();
+//            SpanishStopwordStemmer stemmer = new SpanishStopwordStemmer();
+            TermProcessor stemmer = DowncaseTermProcessor.getInstance();
 
             // Processar as consultas
             // ler as consultas
@@ -201,13 +206,40 @@ public class Cmp269 {
                     // para descartar termos menos relevantes
                     Collections.sort(queryTerms);
                     try {
-                        while (results.isEmpty() && !queryTerms.isEmpty()) {
+                        Set<String> queryWords = new HashSet();
+                        for (QueryTerm queryTerm : queryTerms) {
+                            queryWords.add(queryTerm.getTerm());
+                        }
+                        Set<Set<String>> querys = Sets.powerSet(queryWords);
+                        Set<String> betterQuery = new HashSet();
+                        int maxResults = Integer.MAX_VALUE;
+                        for (Set<String> query : querys) {
+                            if (query.isEmpty()) continue;
+                            String ss = "";
+                            for (String s : query) {
+                                ss += s + " ";
+                            }
+                            queryEngine.process(ss, 0, 10000, results);
+                            if (!results.isEmpty() && query.size() >= betterQuery.size() && results.size() < maxResults) {
+                                betterQuery = query;
+                                maxResults = results.size();
+                            }
+                        }
+                        q = "";
+                        for (String s : betterQuery) {
+                            q += s + " ";
+                        }
+                        q = q.trim();
+                        queryEngine.process(q, 0, 100, results);
+                        
+                        
+                        /*while (results.isEmpty() && !queryTerms.isEmpty()) {
                             q = format(queryTerms);
                             queryEngine.process(q, 0, 100, results);
                             // Termo que aparece em mais documentos (menos importante primeiro)
                             QueryTerm last = queryTerms.get(queryTerms.size()-1);
                             queryTerms.remove(last);
-                        }
+                        }*/
                         if (results.isEmpty()) {
                             Logger.getLogger(Cmp269.class.getName()).log(Level.SEVERE, "Nenhum termo da pesquisa pode ser usado: {0}", num);
                             bwq.write(String.format("[%d] O=[%s] Nenhum termo da pesquisa pode ser usado", num, original));
@@ -221,6 +253,7 @@ public class Cmp269 {
                                 // TODO: this must be in increasing field order
                                 final Index[] sortedIndex = dsi.info.keySet().toArray( new Index[ 0 ] );
                                 Arrays.sort( sortedIndex, new Comparator<Index>() {
+                                        @Override
                                         public int compare( final Index i0, final Index i1 ) {
                                                 return documentCollection.factory().fieldIndex( i0.field ) - documentCollection.factory().fieldIndex( i1.field );
                                         }} );
