@@ -176,20 +176,32 @@ public class Cmp269 {
                     // stopwords e sem stemming
                     q = q.trim();
                     String original = q;
+                    Set<String> queryWords = new HashSet();
                     
-                    // Processar termo por termo
+                    SpanishStopwordStemmer myStemmer = new SpanishStopwordStemmer();
                     for (String t : q.split("\\s+")) {
                         MutableString m = new MutableString(t);
-                        if (stemmer.processTerm(m)) {
-                            // Mas apenas adiciona os termos que ainda nao foram
-                            // adicionados, que nao forem stopwords
-                            // e que tenham tamanho maior que 1 e que consigam
-                            // recuperar algum resultado
-                            QueryTerm queryTerm = new QueryTerm(m.toString(),0);
-                            if (m.length() > 1) {
+                        if (t.length() > 1 && myStemmer.processTerm(m)) {
+                            queryWords.add(t.toLowerCase());
+                        }
+                    }
+                    
+                    
+                    // Processar termo por termo
+                    /*for (String t : q.split("\\s+")) {
+                        if (t.length() > 1 && !queryWords.contains(t.toLowerCase())) {
+                            MutableString m = new MutableString(t);
+                            if (myStemmer.processTerm(m)) {
+                                // Mas apenas adiciona os termos que ainda nao foram
+                                // adicionados, que nao forem stopwords
+                                // e que tenham tamanho maior que 1 e que consigam
+                                // recuperar algum resultado
+                                m.replace(t.toLowerCase());
+                                QueryTerm queryTerm = new QueryTerm(m.toString(), 0);
                                 try {
                                     queryEngine.process(m.toString(), 0, 10000, results);
                                     if (results.size() > 0) {
+                                        queryWords.add(m.toString());
                                         queryTerm.setDocumentFrequency(results.size());
                                         queryTerms.add(queryTerm);
                                     }
@@ -204,33 +216,38 @@ public class Cmp269 {
                     // Vamos tentar processar todos os termos da query
                     // Em caso de não encontrar documentos, usamos a lista prioritária
                     // para descartar termos menos relevantes
-                    Collections.sort(queryTerms);
+                    Collections.sort(queryTerms);*/
                     try {
-                        Set<String> queryWords = new HashSet();
-                        for (QueryTerm queryTerm : queryTerms) {
-                            queryWords.add(queryTerm.getTerm());
-                        }
-                        Set<Set<String>> querys = Sets.powerSet(queryWords);
-                        Set<String> betterQuery = new HashSet();
-                        int maxResults = Integer.MAX_VALUE;
-                        for (Set<String> query : querys) {
-                            if (query.isEmpty()) continue;
-                            String ss = "";
-                            for (String s : query) {
-                                ss += s + " ";
+//                        Set<Set<String>> querys = Sets.powerSet(queryWords);
+                        Set<Set<String>> viableQuerys = new HashSet();
+                        for (int j = queryWords.size(); j > 0; j--) {
+                            PowerSet<String> querys = new PowerSet(queryWords, j, j);
+                            for (Set<String> query : querys) {
+                                if (query.size() > 1){
+                                    String ss = "";
+                                    for (String s : query) {
+                                        ss += s + " ";
+                                    }
+                                    queryEngine.process(ss, 0, 10000, results);
+                                    if (!results.isEmpty()) {
+                                        viableQuerys.add(query);
+                                    }
+                                }
                             }
-                            queryEngine.process(ss, 0, 10000, results);
-                            if (!results.isEmpty() && query.size() >= betterQuery.size() && results.size() < maxResults) {
-                                betterQuery = query;
-                                maxResults = results.size();
-                            }
+                            // Tweak
+                            if (!viableQuerys.isEmpty()) break;
                         }
                         q = "";
-                        for (String s : betterQuery) {
-                            q += s + " ";
+                        for (Set<String> ss : viableQuerys) {
+                            for (String s : ss) {
+                                q += s + " ";
+                            }
+                            q += ", ";
                         }
-                        q = q.trim();
-                        queryEngine.process(q, 0, 100, results);
+                        if (q.length() > 2) {
+                            q = q.substring(0, q.length()-2);
+                            queryEngine.process(q, 0, 100, results);
+                        }
                         
                         
                         /*while (results.isEmpty() && !queryTerms.isEmpty()) {
@@ -329,8 +346,10 @@ public class Cmp269 {
             if (split == -1 || basenameWeight[i].startsWith("mg4j://")) {
                 index = Index.getInstance(basenameWeight[i], true, loadSizes);
                 if (i == 0) {
+                    // Peso 3 para o title
                     index2Weight.put(index, 3);
                 } else {
+                    // Peso 1 para o text
                     index2Weight.put(index, 1);
                 }
                 
